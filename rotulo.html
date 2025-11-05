@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Gerador de Rótulo Nutricional ANVISA</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
+  <style>
+    :root {
+      /* largura do rótulo na tela e no PDF (porcentagem da página) */
+      --largura-rotulo: 80%;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f3f4f6;
+      display: flex;
+      height: 100vh;
+    }
+
+    .form-panel {
+      width: 380px;
+      background: #fff;
+      padding: 12px 14px;
+      border-right: 1px solid #ddd;
+      overflow-y: auto;
+      box-sizing: border-box;
+      font-size: 10pt;
+    }
+
+    .preview-panel {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 11pt;
+      margin: 0 0 8px;
+    }
+
+    label {
+      display: block;
+      font-size: 8pt;
+      margin-top: 6px;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 4px;
+      font-size: 8pt;
+      margin-top: 2px;
+      box-sizing: border-box;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 40px;
+    }
+
+    .row {
+      display: flex;
+      gap: 6px;
+    }
+    .row > div {
+      flex: 1;
+    }
+
+    table {
+      border-collapse: collapse;
+    }
+
+    .btn-print, .btn-small {
+      margin-top: 4px;
+      margin-right: 4px;
+      padding: 4px 8px;
+      font-size: 8pt;
+      cursor: pointer;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    .btn-print {
+      margin-bottom: 10px;
+    }
+
+    /* RÓTULO */
+    .rotulo-wrapper {
+      width: var(--largura-rotulo);
+      max-width: 600px;
+    }
+
+    .rotulo {
+      background: #fff;
+      border: 2px solid #000;
+      padding: 10px;
+      color: #000;
+      font-size: 9pt;
+      box-sizing: border-box;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .rotulo h2 {
+      margin: 0 0 6px;
+      font-size: 11pt;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .rotulo .secao {
+      margin-bottom: 4px;
+    }
+
+    .rotulo .titulo-negrito {
+      font-weight: bold;
+    }
+
+    /* Título da tabela – AGORA tb com 62%, alinhado com a grade */
+    .rotulo .nutri-header {
+      width: 62%;
+      margin: 0 auto;
+      text-align: center;
+      font-weight: bold;
+      font-size: 10pt;
+      text-transform: uppercase;
+      border: 2px solid #000;
+      padding: 4px 0;
+      margin-top: 6px;
+      margin-bottom: 0;
+      box-sizing: border-box;
+    }
+
+    /* “Porções por embalagem / Porção” – mesma largura da grade (62%) */
+    .nutri-meta {
+      width: 62%;
+      margin: 0 auto;
+      border-left: 2px solid #000;
+      border-right: 2px solid #000;
+      border-bottom: 2px solid #000;
+      padding: 3px 4px;
+      font-size: 8pt;
+      line-height: 1.3;
+      text-align: left;
+      box-sizing: border-box;
+    }
+
+    /* Barra preta – mesma largura da grade (62%) */
+    .nutri-bar {
+      width: 62%;
+      margin: 0 auto;
+      height: 3px;
+      background: #000;
+      border-left: 2px solid #000;
+      border-right: 2px solid #000;
+      box-sizing: border-box;
+    }
+
+    /* Tabela ANVISA – grade com 62% da largura, centralizada */
+    .nutri-table {
+      width: 62%;
+      margin: 0 auto;
+      border-left: 2px solid #000;
+      border-right: 2px solid #000;
+      border-bottom: 2px solid #000;
+      border-top: none;
+      font-size: 8pt;
+      box-sizing: border-box;
+    }
+
+    .nutri-table th,
+    .nutri-table td {
+      border: 1px solid #000;
+      padding: 2px 4px;
+      line-height: 1.25;
+      vertical-align: middle;
+    }
+
+    .nutri-table th {
+      font-weight: normal;
+      text-align: center;
+    }
+
+    .nutri-table tr.nutri-col-header th {
+      border-bottom: 1px solid #000;
+    }
+    .nutri-table tr.nutri-col-header th:first-child {
+      border-top: none;
+      border-left: none;
+      border-right: none;
+    }
+    .nutri-table tr.nutri-col-header th:nth-child(2),
+    .nutri-table tr.nutri-col-header th:nth-child(3),
+    .nutri-table tr.nutri-col-header th:nth-child(4) {
+      border-top: 1px solid #000;
+    }
+
+    /* Primeira coluna (nome dos constituintes) + recuo */
+    .nutri-table td.nutri-nome {
+      text-align: left;
+    }
+    .nutri-indent-0 { padding-left: 4px !important; }
+    .nutri-indent-1 { padding-left: 14px !important; }
+    .nutri-indent-2 { padding-left: 24px !important; }
+
+    /* colunas numéricas à direita */
+    .nutri-table td:nth-child(2),
+    .nutri-table td:nth-child(3),
+    .nutri-table td:nth-child(4) {
+      text-align: right;
+    }
+
+    .nutri-footer {
+      width: 62%;             /* mesma largura da tabela */
+      margin: 2px auto 0 auto;/* mesma posição horizontal (margin auto)  */
+      font-size: 6pt;
+      text-align: left;       /* texto alinhado à esquerda, como você pediu */
+      box-sizing: border-box;
+    }
+
+    .bottom-info {
+      margin-top: 8px;
+      font-size: 8pt;
+    }
+
+    .peso-box {
+      border: 2px solid #000;
+      display: inline-block;
+      padding: 4px 8px;
+      text-align: center;
+      font-weight: bold;
+      margin-top: 4px;
+      font-size: 9pt;
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 10mm;
+    }
+
+    @media print {
+      body {
+        margin: 0;
+        background: #fff;
+      }
+      .form-panel,
+      .btn-print,
+      .page-title {
+        display: none !important;
+      }
+      .preview-panel {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+      }
+      .rotulo-wrapper {
+        max-width: none;
+        width: var(--largura-rotulo);
+        padding: 0 10mm;
+        box-sizing: border-box;
+      }
+      .rotulo {
+        border: 2px solid #000;
+        width: 100%;
+      }
+      .nutri-table,
+      .nutri-meta,
+      .nutri-bar,
+      .nutri-header {
+        width: 62%;
+      }
+    }
+  
+  </style>
+</head>
+<body>
+  <div class="form-panel">
+    <h1>Dados do produto</h1>
+
+    <label>Nome do produto
+      <input id="prodNome" value="Pó de assa-fétida">
+    </label>
+
+    <label>Ingredientes (texto completo)
+      <textarea id="ingredientes">Goma comestível, farinha de trigo, assa-fétida (farinha de trigo utilizada: aproximadamente 35%).</textarea>
+    </label>
+
+    <label>Claims (ex.: ADEQUADO PARA VEGANOS...)
+      <textarea id="claims">ADEQUADO PARA VEGANOS E VEGETARIANOS. LIVRE DE CORANTES ARTIFICIAIS.</textarea>
+    </label>
+
+    <label>Alérgenos / Pode conter traços de
+      <textarea id="alergenos">PODE CONTER TRAÇOS DE: NOZES, TRIGO, MOSTARDA, LEITE, SOJA, SALSÃO.</textarea>
+    </label>
+
+    <div class="row">
+      <div>
+        <label class="shift-right">Porções por embalagem
+          <input id="porcoes" value="000">
+        </label>
+      </div>
+      <div>
+        <label class="shift-right">Porção (g)
+          <input id="porcaoG" value="000">
+        </label>
+      </div>
+    </div>
+
+    <label>Medida caseira
+      <input id="medida" value="medida caseira">
+    </label>
+
+    <label>Largura do rótulo (% da página)
+      <input id="larguraRotulo" type="number" min="40" max="100" value="80">
+    </label>
+
+    <hr style="margin:8px 0;">
+
+    <h1 style="margin-top:0;">Tabela nutricional</h1>
+    <p style="font-size:8pt;margin:0 0 4px;">Preencha valores por 100 g e por porção. O %VD é calculado automaticamente.</p>
+
+    <div id="nutri-form"></div>
+
+    <hr style="margin:8px 0;">
+
+    <h1 style="margin-top:0;">Importador / Fabricante</h1>
+
+    <label>Importado por
+      <input id="impNome" value="Samosa &amp; Company Interesting Food Ltda">
+    </label>
+
+    <label>CNPJ Importador
+      <input id="impCnpj" value="00.000.000/0000-00">
+    </label>
+
+    <label>Endereço Importador
+      <textarea id="impEnd">Rua Exemplo, 123 - Bairro - Cidade/UF - Brasil</textarea>
+    </label>
+
+    <label>Fabricado por
+      <input id="fabNome" value="Fabricante XYZ Pvt. Ltd.">
+    </label>
+
+    <label>País de origem
+      <input id="fabPais" value="Índia">
+    </label>
+
+    <label>Texto de conservação
+      <textarea id="conservacao">Conservar em local fresco e seco. Após aberto, conservar em recipiente bem fechado.</textarea>
+    </label>
+
+    <div class="row">
+      <div>
+        <label>Peso líquido
+          <input id="pesoLiq" value="50 g">
+        </label>
+      </div>
+      <div>
+        <label>Texto abaixo do peso
+          <input id="textoPeso" value="PRODUTO DA ÍNDIA">
+        </label>
+      </div>
+    </div>
+
+    <hr style="margin:8px 0;">
+
+    <h1 style="margin-top:0;">Modelos (salvar / carregar)</h1>
+    <button type="button" class="btn-small" id="btnExport">Exportar modelo</button>
+    <button type="button" class="btn-small" id="btnImport">Importar modelo</button>
+    <textarea id="jsonModel" placeholder="Clique em Exportar para gerar o JSON do rótulo atual.
+Copie e guarde em um arquivo .txt.
+Para carregar, cole o JSON aqui e clique em Importar." style="min-height:80px;"></textarea>
+
+  </div>
+
+  <div class="preview-panel">
+    <h2 class="page-title">Prévia para impressão</h2>
+    <button class="btn-print" onclick="window.print()">Imprimir rótulo</button>
+    <div class="rotulo-wrapper">
+      <div id="rotulo" class="rotulo"></div>
+    </div>
+  </div>
+
+  <script>
+    // DRIs aproximados para cálculo de %VD
+    const refValues = {
+    "Valor energético (kcal)": 2000,
+    "Carboidratos (g)": 300,
+    "Açúcares totais (g)": null,
+    "Açúcares adicionados (g)": 50,
+    "Proteínas (g)": 75,
+    "Gorduras totais (g)": 55,
+    "Gorduras saturadas (g)": 22,
+    "Gorduras trans (g)": null,
+    "Fibras alimentares (g)": 25,
+    "Sódio (mg)": 2000
+    };
+
+    const nutrientNames = [
+      "Valor energético (kcal)",
+      "Carboidratos (g)",
+      "Açúcares totais (g)",
+      "Açúcares adicionados (g)",
+      "Proteínas (g)",
+      "Gorduras totais (g)",
+      "Gorduras saturadas (g)",
+      "Gorduras trans (g)",
+      "Fibras alimentares (g)",
+      "Sódio (mg)"
+    ];
+
+    // Recuos padrão da primeira coluna
+    const defaultIndents = {
+      "Valor energético (kcal)": 0,
+      "Carboidratos (g)": 0,
+      "Açúcares totais (g)": 1,
+      "Açúcares adicionados (g)": 2,
+      "Proteínas (g)": 0,
+      "Gorduras totais (g)": 0,
+      "Gorduras saturadas (g)": 1,
+      "Gorduras trans (g)": 1,
+      "Fibras alimentares (g)": 0,
+      "Sódio (mg)": 0
+    };
+
+    let currentIndents = { ...defaultIndents };
+
+    const exemplos100 = ["0","0","0","0","0","0","0","0","0","0"];
+    const exemplosPorcao = ["0","0","0","0","0","0","0","0","0","0"];
+
+    const formContainer = document.getElementById("nutri-form");
+    const larguraInput = document.getElementById("larguraRotulo");
+    const jsonArea = document.getElementById("jsonModel");
+    const btnExport = document.getElementById("btnExport");
+    const btnImport = document.getElementById("btnImport");
+
+    /* Cria inputs para cada nutriente + seletor de recuo */
+    nutrientNames.forEach((nome, i) => {
+      const indent = currentIndents[nome] ?? 0;
+      const bloco = document.createElement("div");
+      bloco.style.marginBottom = "4px";
+      bloco.innerHTML = `
+        <label style="font-weight:bold;">${nome}</label>
+        <div class="row">
+          <div>
+            <span style="font-size:8pt;">por 100 g</span>
+            <input data-field="${nome}" data-type="100" value="${exemplos100[i] ?? ''}">
+          </div>
+          <div>
+            <span style="font-size:8pt;">por porção</span>
+            <input data-field="${nome}" data-type="porcao" value="${exemplosPorcao[i] ?? ''}">
+          </div>
+        </div>
+        <div class="row" style="margin-top:2px;">
+          <div>
+            <span style="font-size:8pt;">Recuo (coluna 1)</span>
+            <select data-indent-for="${nome}">
+              <option value="0"${indent===0?' selected':''}>0 - principal</option>
+              <option value="1"${indent===1?' selected':''}>1 - subnível</option>
+              <option value="2"${indent===2?' selected':''}>2 - subnível 2</option>
+            </select>
+          </div>
+        </div>
+      `;
+      formContainer.appendChild(bloco);
+    });
+
+    function getNum(val) {
+      if (!val) return null;
+      const n = parseFloat(String(val).replace(",", "."));
+      return isNaN(n) ? null : n;
+    }
+
+    function calcVD(nomeCampo, valorPorcao) {
+      const ref = refValues[nomeCampo];
+      const num = getNum(valorPorcao);
+      if (!ref || num === null) return "";
+      let vd = (num / ref) * 100;
+      return vd.toFixed(1).replace(".", ",");
+    }
+
+    function lerDadosTabela() {
+      const linhas = {};
+      document.querySelectorAll("#nutri-form input").forEach(inp => {
+        const campo = inp.dataset.field;
+        const tipo = inp.dataset.type;
+        if (!linhas[campo]) linhas[campo] = {};
+        linhas[campo][tipo] = inp.value;
+      });
+      return linhas;
+    }
+
+    function lerIndentsDaUI() {
+      currentIndents = { ...defaultIndents };
+      document.querySelectorAll("select[data-indent-for]").forEach(sel => {
+        const campo = sel.getAttribute("data-indent-for");
+        const valor = parseInt(sel.value, 10);
+        currentIndents[campo] = isNaN(valor) ? 0 : valor;
+      });
+    }
+
+    function atualizarLargura() {
+      let v = Number(larguraInput.value);
+      if (isNaN(v)) v = 80;
+      if (v < 40) v = 40;
+      if (v > 100) v = 100;
+      larguraInput.value = v;
+      document.documentElement.style.setProperty("--largura-rotulo", v + "%");
+    }
+
+    function headerPorcaoTexto(porcaoG) {
+      let txt = (porcaoG || "").trim();
+      if (!txt) return "000 g";
+      const lower = txt.toLowerCase();
+      if (!lower.includes("g")) {
+        txt = txt + " g";
+      }
+      return txt;
+    }
+
+    function renderRotulo() {
+      const rotulo = document.getElementById("rotulo");
+
+      const nome = document.getElementById("prodNome").value;
+      const ingredientes = document.getElementById("ingredientes").value;
+      const claims = document.getElementById("claims").value;
+      const alergenos = document.getElementById("alergenos").value;
+      const porcoes = document.getElementById("porcoes").value;
+      const porcaoG = document.getElementById("porcaoG").value;
+      const medida = document.getElementById("medida").value;
+
+      const impNome = document.getElementById("impNome").value;
+      const impCnpj = document.getElementById("impCnpj").value;
+      const impEnd = document.getElementById("impEnd").value;
+      const fabNome = document.getElementById("fabNome").value;
+      const fabPais = document.getElementById("fabPais").value;
+      const conservacao = document.getElementById("conservacao").value;
+      const pesoLiq = document.getElementById("pesoLiq").value;
+      const textoPeso = document.getElementById("textoPeso").value;
+
+      const tabela = lerDadosTabela();
+      lerIndentsDaUI();
+      const textoPorcaoHeader = headerPorcaoTexto(porcaoG);
+
+      let html = "";
+
+      html += `<h2>${nome}</h2>`;
+
+      html += `<div class="secao"><span class="titulo-negrito">INGREDIENTES: </span>${ingredientes}</div>`;
+      if (claims.trim()) {
+        html += `<div class="secao"><span class="titulo-negrito">${claims}</span></div>`;
+      }
+      if (alergenos.trim()) {
+        html += `<div class="secao"><span class="titulo-negrito">${alergenos}</span></div>`;
+      }
+
+      html += `<div class="nutri-header">INFORMAÇÃO NUTRICIONAL</div>`;
+      html += `<div class="nutri-meta">
+        Porções por embalagem: ${porcoes}<br>
+        Porção: ${textoPorcaoHeader} (${medida})
+      </div>`;
+
+      html += `<div class="nutri-bar"></div>`;
+
+      html += `<table class="nutri-table">
+        <tr class="nutri-col-header">
+          <th></th>
+          <th>100 g</th>
+          <th>${textoPorcaoHeader}</th>
+          <th>%VD*</th>
+        </tr>`;
+
+      nutrientNames.forEach(campo => {
+        const nivel = currentIndents[campo] ?? 0;
+        const por100 = tabela[campo]?.["100"] ?? "";
+        const porPorcao = tabela[campo]?.["porcao"] ?? "";
+        const vd = calcVD(campo, porPorcao);
+        html += `
+          <tr>
+            <td class="nutri-nome nutri-indent-${nivel}">${campo}</td>
+            <td>${por100}</td>
+            <td>${porPorcao}</td>
+            <td>${vd}</td>
+          </tr>`;
+      });
+
+      html += `</table>`;
+      html += `<div class="nutri-footer">*Percentual de valores diários fornecidos pela porção.</div>`;
+
+      html += `<div class="bottom-info">
+        Importado por: ${impNome}<br>
+        CNPJ: ${impCnpj}<br>
+        Endereço: ${impEnd.replace(/\n/g,"<br>")}<br><br>
+        Fabricado por: ${fabNome}<br>
+        País de origem: ${fabPais}<br><br>
+        ${conservacao.replace(/\n/g,"<br>")}<br>
+        <div class="peso-box">
+          PESO LÍQ.: ${pesoLiq}<br>
+          ${textoPeso}
+        </div>
+      </div>`;
+
+      rotulo.innerHTML = html;
+    }
+
+    const simpleFieldIds = [
+      "prodNome","ingredientes","claims","alergenos",
+      "porcoes","porcaoG","medida",
+      "larguraRotulo",
+      "impNome","impCnpj","impEnd","fabNome","fabPais",
+      "conservacao","pesoLiq","textoPeso"
+    ];
+
+    function getState() {
+      const state = { fields: {}, tabela: {}, indents: { ...currentIndents } };
+      simpleFieldIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) state.fields[id] = el.value;
+      });
+      state.tabela = lerDadosTabela();
+      return state;
+    }
+
+    function setState(state) {
+      if (state.fields) {
+        Object.keys(state.fields).forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = state.fields[id];
+        });
+      }
+      if (state.tabela) {
+        document.querySelectorAll("#nutri-form input").forEach(inp => {
+          const campo = inp.dataset.field;
+          const tipo = inp.dataset.type;
+          if (state.tabela[campo] && state.tabela[campo][tipo] !== undefined) {
+            inp.value = state.tabela[campo][tipo];
+          }
+        });
+      }
+      if (state.indents) {
+        currentIndents = { ...defaultIndents, ...state.indents };
+        document.querySelectorAll("select[data-indent-for]").forEach(sel => {
+          const campo = sel.getAttribute("data-indent-for");
+          const val = currentIndents[campo] ?? 0;
+          sel.value = String(val);
+        });
+      }
+      atualizarLargura();
+      renderRotulo();
+    }
+
+    document.addEventListener("input", function (e) {
+      if (e.target.closest(".form-panel")) {
+        if (e.target === larguraInput) {
+          atualizarLargura();
+        }
+        renderRotulo();
+      }
+    });
+
+    document.addEventListener("change", function (e) {
+      if (e.target.matches("select[data-indent-for]")) {
+        renderRotulo();   // recuo mudou → redesenha
+      }
+    });
+
+    btnExport.addEventListener("click", () => {
+      const state = getState();
+      jsonArea.value = JSON.stringify(state, null, 2);
+    });
+
+    btnImport.addEventListener("click", () => {
+      const txt = jsonArea.value.trim();
+      if (!txt) {
+        alert("Cole um JSON de modelo no campo antes de importar.");
+        return;
+      }
+      try {
+        const obj = JSON.parse(txt);
+        setState(obj);
+      } catch (e) {
+        alert("JSON inválido. Verifique o texto e tente novamente.");
+      }
+    });
+
+    // inicial
+    atualizarLargura();
+    renderRotulo();
+  </script>
+</body>
+</html>

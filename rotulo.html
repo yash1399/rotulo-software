@@ -119,7 +119,7 @@
       font-weight: bold;
     }
 
-    /* Título da tabela – AGORA tb com 62%, alinhado com a grade */
+    /* Título da tabela – mesma largura da grade (62%) */
     .rotulo .nutri-header {
       width: 62%;
       margin: 0 auto;
@@ -134,7 +134,7 @@
       box-sizing: border-box;
     }
 
-    /* “Porções por embalagem / Porção” – mesma largura da grade (62%) */
+    /* “Porções por embalagem / Porção” – 62%, texto à esquerda */
     .nutri-meta {
       width: 62%;
       margin: 0 auto;
@@ -210,14 +210,15 @@
     .nutri-table td:nth-child(2),
     .nutri-table td:nth-child(3),
     .nutri-table td:nth-child(4) {
-      text-align: right;
+      text-align: center;
     }
 
+    /* Rodapé da tabela */
     .nutri-footer {
-      width: 62%;             /* mesma largura da tabela */
-      margin: 2px auto 0 auto;/* mesma posição horizontal (margin auto)  */
+      width: 62%;
+      margin: 2px auto 0 auto;
       font-size: 6pt;
-      text-align: left;       /* texto alinhado à esquerda, como você pediu */
+      text-align: left;
       box-sizing: border-box;
     }
 
@@ -226,14 +227,44 @@
       font-size: 8pt;
     }
 
-    .peso-box {
+    /* duas colunas: importador/fabricante (esquerda) e exportador (direita) */
+    .bottom-columns {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .bottom-left, .bottom-right {
+      flex: 1;
+    }
+
+    .bottom-right {
+      text-align: left;
+    }
+
+    /* caixas inferiores: lote/data e peso líquido lado a lado */
+    .bottom-boxes {
+      display: flex;
+      gap: 12px;
+      margin-top: 6px;
+      align-items: stretch;
+    }
+
+    .info-lote-box {
+      flex: 1;
       border: 2px solid #000;
-      display: inline-block;
+      padding: 4px 8px;
+      font-size: 8pt;
+      box-sizing: border-box;
+    }
+
+    .peso-box {
+      flex: 1;
+      border: 2px solid #000;
       padding: 4px 8px;
       text-align: center;
       font-weight: bold;
-      margin-top: 4px;
       font-size: 9pt;
+      box-sizing: border-box;
     }
 
     @page {
@@ -271,11 +302,11 @@
       .nutri-table,
       .nutri-meta,
       .nutri-bar,
-      .nutri-header {
+      .nutri-header,
+      .nutri-footer {
         width: 62%;
       }
     }
-  
   </style>
 </head>
 <body>
@@ -300,12 +331,12 @@
 
     <div class="row">
       <div>
-        <label class="shift-right">Porções por embalagem
+        <label>Porções por embalagem
           <input id="porcoes" value="000">
         </label>
       </div>
       <div>
-        <label class="shift-right">Porção (g)
+        <label>Porção (g)
           <input id="porcaoG" value="000">
         </label>
       </div>
@@ -328,7 +359,7 @@
 
     <hr style="margin:8px 0;">
 
-    <h1 style="margin-top:0;">Importador / Fabricante</h1>
+    <h1 style="margin-top:0;">Importador / Fabricante / Exportador</h1>
 
     <label>Importado por
       <input id="impNome" value="Samosa &amp; Company Interesting Food Ltda">
@@ -354,7 +385,44 @@
       <textarea id="conservacao">Conservar em local fresco e seco. Após aberto, conservar em recipiente bem fechado.</textarea>
     </label>
 
-    <div class="row">
+    <hr style="margin:8px 0 4px 0;">
+
+    <h1 style="margin-top:0;">Exportador</h1>
+
+    <label>Exportado por
+      <input id="expNome" value="Exporter ABC Pvt. Ltd.">
+    </label>
+
+    <label>Endereço Exportador
+      <textarea id="expEnd">Endereço do exportador - Cidade - País</textarea>
+    </label>
+
+    <label>País do exportador
+      <input id="expPais" value="Índia">
+    </label>
+
+    <hr style="margin:8px 0 4px 0;">
+
+    <h1 style="margin-top:0;">Dados de lote</h1>
+
+    <div class="row" style="margin-top:2px;">
+      <div>
+        <label>Data de fabricação
+          <input id="dataFab" placeholder="__/__/____">
+        </label>
+      </div>
+      <div>
+        <label>Validade
+          <input id="dataVal" placeholder="__/__/____">
+        </label>
+      </div>
+    </div>
+
+    <label>Lote
+      <input id="lote" placeholder="Ex.: L12345">
+    </label>
+
+    <div class="row" style="margin-top:6px;">
       <div>
         <label>Peso líquido
           <input id="pesoLiq" value="50 g">
@@ -387,18 +455,18 @@ Para carregar, cole o JSON aqui e clique em Importar." style="min-height:80px;">
   </div>
 
   <script>
-    // DRIs aproximados para cálculo de %VD
+    // DRIs aproximados para cálculo de %VD (ajuste se necessário com valores oficiais da ANVISA)
     const refValues = {
-    "Valor energético (kcal)": 2000,
-    "Carboidratos (g)": 300,
-    "Açúcares totais (g)": null,
-    "Açúcares adicionados (g)": 50,
-    "Proteínas (g)": 75,
-    "Gorduras totais (g)": 55,
-    "Gorduras saturadas (g)": 22,
-    "Gorduras trans (g)": null,
-    "Fibras alimentares (g)": 25,
-    "Sódio (mg)": 2000
+      "Valor energético (kcal)": 2000,
+      "Carboidratos (g)": 300,
+      "Açúcares totais (g)": null,
+      "Açúcares adicionados (g)": 50,
+      "Proteínas (g)": 75,
+      "Gorduras totais (g)": 55,
+      "Gorduras saturadas (g)": 22,
+      "Gorduras trans (g)": null,
+      "Fibras alimentares (g)": 25,
+      "Sódio (mg)": 2000
     };
 
     const nutrientNames = [
@@ -480,9 +548,12 @@ Para carregar, cole o JSON aqui e clique em Importar." style="min-height:80px;">
       const ref = refValues[nomeCampo];
       const num = getNum(valorPorcao);
       if (!ref || num === null) return "";
+      
       let vd = (num / ref) * 100;
-      return vd.toFixed(1).replace(".", ",");
-    }
+      let arredondado = Math.round(vd);   // inteiro, sem casas decimais
+      
+      return String(arredondado);
+  }
 
     function lerDadosTabela() {
       const linhas = {};
@@ -540,6 +611,15 @@ Para carregar, cole o JSON aqui e clique em Importar." style="min-height:80px;">
       const fabNome = document.getElementById("fabNome").value;
       const fabPais = document.getElementById("fabPais").value;
       const conservacao = document.getElementById("conservacao").value;
+
+      const expNome = document.getElementById("expNome").value;
+      const expEnd = document.getElementById("expEnd").value;
+      const expPais = document.getElementById("expPais").value;
+
+      const dataFab = document.getElementById("dataFab").value;
+      const dataVal = document.getElementById("dataVal").value;
+      const lote    = document.getElementById("lote").value;
+
       const pesoLiq = document.getElementById("pesoLiq").value;
       const textoPeso = document.getElementById("textoPeso").value;
 
@@ -593,15 +673,32 @@ Para carregar, cole o JSON aqui e clique em Importar." style="min-height:80px;">
       html += `<div class="nutri-footer">*Percentual de valores diários fornecidos pela porção.</div>`;
 
       html += `<div class="bottom-info">
-        Importado por: ${impNome}<br>
-        CNPJ: ${impCnpj}<br>
-        Endereço: ${impEnd.replace(/\n/g,"<br>")}<br><br>
-        Fabricado por: ${fabNome}<br>
-        País de origem: ${fabPais}<br><br>
-        ${conservacao.replace(/\n/g,"<br>")}<br>
-        <div class="peso-box">
-          PESO LÍQ.: ${pesoLiq}<br>
-          ${textoPeso}
+        <div class="bottom-columns">
+          <div class="bottom-left">
+            Importado por: ${impNome}<br>
+            CNPJ: ${impCnpj}<br>
+            Endereço: ${impEnd.replace(/\n/g,"<br>")}<br><br>
+            Fabricado por: ${fabNome}<br>
+             ${fabPais}<br><br>
+            ${conservacao.replace(/\n/g,"<br>")}
+          </div>
+          <div class="bottom-right">
+            Exportado por: ${expNome}<br>
+            Endereço: ${expEnd.replace(/\n/g,"<br>")}<br>
+             ${expPais}
+          </div>
+        </div>
+
+        <div class="bottom-boxes">
+          <div class="info-lote-box">
+            Data de fabricação: ${dataFab || "&nbsp;"}<br>
+            Validade: ${dataVal || "&nbsp;"}<br>
+            Lote: ${lote || "&nbsp;"}
+          </div>
+          <div class="peso-box">
+            PESO LÍQUIDO: ${pesoLiq}<br>
+            ${textoPeso}
+          </div>
         </div>
       </div>`;
 
@@ -613,7 +710,10 @@ Para carregar, cole o JSON aqui e clique em Importar." style="min-height:80px;">
       "porcoes","porcaoG","medida",
       "larguraRotulo",
       "impNome","impCnpj","impEnd","fabNome","fabPais",
-      "conservacao","pesoLiq","textoPeso"
+      "conservacao",
+      "expNome","expEnd","expPais",
+      "dataFab","dataVal","lote",
+      "pesoLiq","textoPeso"
     ];
 
     function getState() {
